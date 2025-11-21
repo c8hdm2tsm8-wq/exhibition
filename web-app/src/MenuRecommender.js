@@ -178,6 +178,21 @@ function MenuRecommender({ userSettings }) {
                         <h2>{recommendedMenu.title}</h2>
                         <p>#{recommendedMenu.tags.join(' #')}</p>
                     </div>
+                    <button
+                        className="map-search-button"
+                        onClick={() => {
+                            // ★ [수정] 정규표현식으로 괄호 ( ) 와 그 안의 글자를 싹 지웁니다.
+                            // 예: "맑은 버섯 전골 (소금 베이스)" -> "맑은 버섯 전골"
+                            const cleanTitle = recommendedMenu.title.replace(/\(.*\)/gi, '').trim();
+                            
+                            // 깔끔해진 이름으로 맛집 검색
+                            const query = encodeURIComponent(`${cleanTitle}`);
+                            
+                            window.open(`https://m.map.naver.com/search2/search.naver?query=${query}`, '_blank');
+                        }}
+                    >
+                        🗺️ 주변 식당 찾아보기
+                    </button>
 
                     <button
                         className="analyze-button"
