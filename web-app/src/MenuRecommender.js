@@ -41,6 +41,15 @@ function MenuRecommender({ userSettings }) {
         비건: userSettings?.비건 || false
     };
 
+    const ORDER_ALLERGY = ["밀", "대두", "땅콩", "우유", "계란", "새우", "게", "닭고기", "쇠고기", "돼지고기", "조개"];
+    const ORDER_DISLIKE = ["MSG", "사카린", "아스파탐", "수크랄로스", "젤라틴", "카제인", "유청", "코치닐", "꿀"];
+
+    // 1. 알레르기: 고정된 순서 리스트에서, 내가 체크한 것만 남김 (순서 유지됨)
+    const allergyList = ORDER_ALLERGY.filter(item => safeUserSettings.알레르기.includes(item));
+
+    // 2. 기피성분: 고정된 순서 리스트 + 비건은 화면 맨 아래에 있으니 맨 뒤에 추가
+    const rawDislikeList = ORDER_DISLIKE.filter(item => safeUserSettings.기타기피.includes(item));
+
     const [currentStep, setCurrentStep] = useState(0);
     const [preferences, setPreferences] = useState({});
     const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +83,6 @@ function MenuRecommender({ userSettings }) {
 
     const handleSelect = (option) => {
         const currentQuestionId = surveySteps[currentStep].id;
-
         const newPreferences = {
             ...preferences,
             [currentQuestionId]: option
@@ -113,11 +121,9 @@ function MenuRecommender({ userSettings }) {
 
             Object.entries(finalPreferences).forEach(([key, value]) => {
                 if (value === '상관없음') return;
-
                 if (key === 'category') {
                     filteredList = filteredList.filter(recipe => recipe.category === value);
-                } 
-                else {
+                } else {
                     const mapped = preferenceMap[value];
                     if (mapped) {
                         filteredList = filteredList.filter(recipe => recipe[key] === mapped);
@@ -133,7 +139,6 @@ function MenuRecommender({ userSettings }) {
                 setRecommendedMenu(null);
                 setErrorMsg("조건을 모두 만족하는 안전한 메뉴를 찾지 못했습니다. 😢");
             }
-
             setIsLoading(false);
         }, 2000);
     };
@@ -150,7 +155,6 @@ function MenuRecommender({ userSettings }) {
                         <h2>안전 메뉴를 검색 중입니다...</h2>
                         <p>기피 성분과 선호도를 분석 중입니다.</p>
                         <div className="spinner" />
-                        
                         <div className="loading-image-wrapper"> 
                             <img 
                                 src={loadingImages[currentImageIndex]}
@@ -158,7 +162,6 @@ function MenuRecommender({ userSettings }) {
                                 className="loading-food-carousel-img"
                             />
                         </div>
-
                     </div>
                 </section>
             )}
@@ -171,7 +174,6 @@ function MenuRecommender({ userSettings }) {
                                 '{avoidedList.join(', ')}' 성분을 제외한 메뉴입니다.
                             </p>
                         )}
-                        
                         <h3>오늘의 안전 메뉴 추천</h3>
                         <h2>{recommendedMenu.title}</h2>
                         <p>#{recommendedMenu.tags.join(' #')}</p>
@@ -206,9 +208,74 @@ function MenuRecommender({ userSettings }) {
                 <section>
                     <div className="survey-container">
                         {currentStep > 0 && (
-                            <button className="survey-back-button" onClick={handleBack}>
-                                ← 뒤로 가기
-                            </button>
+                            <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '15px' }}>
+                                <button className="survey-back-button" onClick={handleBack}>
+                                    ← 뒤로 가기
+                                </button>
+                            </div>
+                        )}
+
+                        {/* ★ [핵심 수정] 박스 안쪽으로 필터를 이동하고, 두 줄로 나눔 ★ */}
+                        <div className="inner-filter-box">
+                            
+
+                            {/* 2. 알레르기 */}
+                            {allergyList.length > 0 && (
+                                <div className="filter-row">
+                                    <span className="filter-label-danger">⚠️ 알레르기:</span>
+                                    <div className="filter-tags-wrapper">
+                                        {allergyList.map((tag, index) => (
+                                            <span key={index} className="user-filter-tag danger">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 3. 기피성분 (여기서 비건은 빠짐) */}
+                            {rawDislikeList.length > 0 && (
+                                <div className="filter-row">
+                                    <span className="filter-label-warning">🚫 기피성분:</span>
+                                    <div className="filter-tags-wrapper">
+                                        {rawDislikeList.map((tag, index) => (
+                                            <span key={index} className="user-filter-tag warning">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {safeUserSettings.비건 && (
+                                <div className="filter-row">
+                                    <span className="filter-label-vegan">🌿 비건:</span>
+                                    <div className="filter-tags-wrapper">
+                                        <span className="user-filter-tag vegan">
+                                            모든 동물성 식품 제외
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 아무것도 없을 때 */}
+                             {!safeUserSettings.비건 && allergyList.length === 0 && rawDislikeList.length === 0 && (
+                                <div className="filter-row center">
+                                    <span className="filter-label-safe">✅ 제외하는 성분 없음 (모두 가능)</span>
+                                </div>
+                            )}
+                        </div>
+                        {/* ★ 필터 끝 ★ */}
+
+
+                        {/* 선택한 질문 태그 (한식 등) */}
+                        {currentStep > 0 && (
+                            <div className="selected-tags-container">
+                                {surveySteps.slice(0, currentStep).map(step => (
+                                    <span key={step.id} className="selected-tag">
+                                        #{preferences[step.id]}
+                                    </span>
+                                ))}
+                            </div>
                         )}
 
                         <h3 className="survey-question">

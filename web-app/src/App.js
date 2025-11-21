@@ -5,6 +5,8 @@ import CheckboxGroup from './CheckboxGroup';
 import ImageUploader from './ImageUploader';
 import AnalysisModal from './AnalysisModal';
 import MenuRecommender from './MenuRecommender';
+import IngredientSearcher from './IngredientSearcher';
+import BookmarkList from './BookmarkList';
 import './App.css';
 
 const CHECKBOX_OPTIONS = {
@@ -22,9 +24,9 @@ function App() {
 
   const [analysisResult, setAnalysisResult] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  
   const [activeTab, setActiveTab] = useState('analyzer');
-
+  const [showBookmark, setShowBookmark] = useState(false);
+  
   const handleCheckboxChange = (category, item) => {
     setCheckedItems(prev => {
       const currentItems = prev[category] || [];
@@ -34,7 +36,41 @@ function App() {
       return { ...prev, [category]: newItems };
     });
   };
+  const handleSelectAll = (category) => {
+    const allItems = CHECKBOX_OPTIONS[category];
+    const currentItems = checkedItems[category];
+    
+    // 이미 다 선택되어 있는지 확인
+    const isAllSelected = allItems.every(item => currentItems.includes(item));
 
+    setCheckedItems(prev => ({
+      ...prev,
+      // 다 선택되어 있으면 -> 싹 비우기 ([]), 아니면 -> 꽉 채우기 (allItems)
+      [category]: isAllSelected ? [] : allItems 
+    }));
+  };
+
+  const handleGlobalSelectAll = () => {
+    const allCategories = Object.keys(CHECKBOX_OPTIONS); 
+    
+    // 모든 카테고리가 다 꽉 차 있는지 검사
+    const isTotalSelected = allCategories.every(category => {
+        return CHECKBOX_OPTIONS[category].every(item => checkedItems[category].includes(item));
+    });
+
+    if (isTotalSelected) {
+        // 이미 다 선택됨 -> 싹 다 비우기
+        setCheckedItems({ "알레르기": [], "기타기피": [], "비건": [] });
+    } else {
+        // 하나라도 빈 게 있음 -> 싹 다 채우기
+        setCheckedItems({
+            "알레르기": [...CHECKBOX_OPTIONS["알레르기"]],
+            "기타기피": [...CHECKBOX_OPTIONS["기타기피"]],
+            "비건": [...CHECKBOX_OPTIONS["비건"]]
+        });
+    }
+  };
+  
   const userSettingsData = {
     알레르기: checkedItems["알레르기"],
     기타기피: checkedItems["기타기피"],
@@ -56,57 +92,122 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <h1>이건 먹어두대~ 🍎 🍜 🍤</h1>
+    <div className="App" style={{ position: 'relative', minHeight: '100vh' }}>
       
-      <div className="tab-container">
-        <button 
-          className={`tab-button ${activeTab === 'analyzer' ? 'active' : ''}`}
-          onClick={() => setActiveTab('analyzer')}
-        >
-          🔬 성분 분석기
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'recommender' ? 'active' : ''}`}
-          onClick={() => setActiveTab('recommender')}
-        >
-          🧑‍🍳 안전 메뉴 추천
-        </button>
-      </div>
+      <header style={{ position: 'relative', textAlign: 'center', padding: '10px 0' }}>
+        <h1>이건 먹어두대~ 🍎 🍜 🍤</h1>
+        
+        {!showBookmark && (
+            <button 
+                onClick={() => setShowBookmark(true)}
+                style={{
+                    position: 'absolute',
+                    top: '20px',
+                    right: '20px',
+                    backgroundColor: 'white',
+                    border: '1px solid #ddd',
+                    borderRadius: '20px',
+                    padding: '8px 15px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    color: '#555',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    fontSize: '14px',
+                    zIndex: 10
+                }}
+            >
+                🔖 북마크
+            </button>
+        )}
+      </header>
 
-      
-      {activeTab === 'analyzer' && (
+      {showBookmark ? (
+        <BookmarkList onClose={() => setShowBookmark(false)} />
+      ) : (
+
         <>
-          <section>
-            <h2>1. 필터링 성분 설정</h2>
-            {Object.entries(CHECKBOX_OPTIONS).map(([category, items]) => (
-              <CheckboxGroup
-                key={category}
-                category={category}
-                items={items}
-                checkedItems={checkedItems[category] || []}
-                onChange={handleCheckboxChange}
-              />
-            ))}
-            <div className="current-settings">
-              현재 필터링 설정: [알레르기: {checkedItems["알레르기"].join(', ') || '없음'}] [기타: {checkedItems["기타기피"].join(', ') || '없음'}] [비건: {userSettingsData.비건 ? '활성화' : '비활성화'}]
-            </div>
-          </section>
+          <div className="tab-container">
+            <button 
+              className={`tab-button ${activeTab === 'analyzer' ? 'active' : ''}`}
+              onClick={() => setActiveTab('analyzer')}
+            >
+              🔬 성분 분석기
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'recommender' ? 'active' : ''}`}
+              onClick={() => setActiveTab('recommender')}
+            >
+              🧑‍🍳 안전 메뉴 추천
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'search' ? 'active' : ''}`}
+              onClick={() => setActiveTab('search')}
+            >
+              🔍 성분 검색
+            </button>
+          </div>
 
-          <section>
-            <h2>2. 성분표 이미지 업로드</h2>
-            <ImageUploader 
-              onUploadSuccess={handleUploadSuccess} 
+          {activeTab === 'analyzer' && (
+            <>
+              <section>
+                <h2>1. 필터링 성분 설정</h2>
+                <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+                    <button 
+                        onClick={handleGlobalSelectAll}
+                        className="global-select-btn"
+                    >
+                        전체 선택
+                    </button>
+                </div>
+                {Object.entries(CHECKBOX_OPTIONS).map(([category, items]) => (
+                  <div key={category} style={{ position: 'relative' }}>
+                    
+                    {/* ★ [추가] 비건이 아닐 때만 '모두 선택' 버튼 표시 */ }
+                    {category !== "비건" && (
+                        <button
+                            onClick={() => handleSelectAll(category)}
+                            className="select-all-btn"
+                        >
+                            {/* 다 선택되어 있으면 '해제', 아니면 '선택' */}
+                            {items.every(i => checkedItems[category].includes(i)) 
+                                ? ' 전체 해제' 
+                                : ' 모두 선택'}
+                        </button>
+                    )}
+
+                    <CheckboxGroup
+                      category={category}
+                      items={items}
+                      checkedItems={checkedItems[category] || []}
+                      onChange={handleCheckboxChange}
+                    />
+                  </div>
+                ))}
+                <div className="current-settings">
+                  현재 필터링 설정: [알레르기: {checkedItems["알레르기"].join(', ') || '없음'}] [기타: {checkedItems["기타기피"].join(', ') || '없음'}] [비건: {userSettingsData.비건 ? '활성화' : '비활성화'}]
+                </div>
+              </section>
+
+              <section>
+                <h2>2. 성분표 이미지 업로드</h2>
+                <ImageUploader 
+                  onUploadSuccess={handleUploadSuccess} 
+                  userSettings={userSettingsData}
+                />
+              </section>
+            </>
+          )}
+
+          {activeTab === 'recommender' && (
+            <MenuRecommender 
               userSettings={userSettingsData}
             />
-          </section>
-        </>
-      )}
+          )}
 
-      {activeTab === 'recommender' && (
-        <MenuRecommender 
-          userSettings={userSettingsData}
-        />
+          {activeTab === 'search' && (
+            <IngredientSearcher />
+          )}
+        </> 
       )}
 
       <AnalysisModal
